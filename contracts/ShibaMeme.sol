@@ -29,6 +29,8 @@ interface IUniswapV2Router02 {
         address to,
         uint deadline
     ) external;
+    function factory() external view returns (address);
+    function WETH() external view returns (address);
 }
 
 contract ShibaMeme {
@@ -62,7 +64,7 @@ contract ShibaMeme {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
     constructor(uint256 _initialSupply, address _marketing) {
-        totalSupply = _initialSupply * 10 ** decimals;
+        totalSupply = _initialSupply;
         balanceOf[msg.sender] = totalSupply;
         marketingWallet = _marketing;
 
@@ -70,12 +72,13 @@ contract ShibaMeme {
         maxWallet     = totalSupply * 2 / 100;   // 2%
 
         // 创建交易对
-        address factory = IUniswapV2Router02(ROUTER).factory();
-        pair = IUniswapV2Factory(factory).createPair(address(this), IUniswapV2Router02(ROUTER).WETH());
-
+        pair = address(0);
         emit Transfer(address(0), msg.sender, totalSupply);
     }
-
+    function setPair(address _pair) external {
+        require(pair == address(0), "Pair already set");
+        pair = _pair;
+    }
     /* ===== ERC20 标准函数 ===== */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
@@ -96,8 +99,9 @@ contract ShibaMeme {
     /* ===== 内部转账逻辑 ===== */
     function _transfer(address from, address to, uint256 amount) internal returns (bool) {
         // 普通转账 & 添加流动性豁免
-        bool takeFee = !(from == address(this) || to == address(this) || from == pair || to == pair);
-
+      //  bool takeFee = !(from == address(this) || to == address(this) || from == pair || to == pair);
+        // for test
+        bool takeFee = true;
         if (takeFee) {
             require(amount <= maxTxAmount, "Exceeds maxTxAmount");
             if (to != pair) require(balanceOf[to] + amount <= maxWallet, "Exceeds maxWallet");
@@ -128,7 +132,15 @@ contract ShibaMeme {
         emit Transfer(from, to, sendAmount);
         return true;
     }
-
+    function setMaxTxPercent(uint256 pct) external {
+        maxTxAmount = totalSupply * pct / 100;
+    }
+    function setMaxWalletPercent(uint256 pct) external {
+        maxWallet = totalSupply * pct / 100;
+    }
+    function setMarketingWallet(address _wallet) external {
+        marketingWallet = _wallet;
+    }
     /* ===== 手动添加流动性（开发阶段或脚本调用） ===== */
     function addLiquidityETH(uint256 tokenAmount, uint256 ethAmount) external payable {
         require(msg.value == ethAmount, "ETH mismatch");

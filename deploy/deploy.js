@@ -2,8 +2,9 @@ const hre = require("hardhat");
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
     const ShibaMeme = await hre.ethers.getContractFactory("ShibaMeme");
+    const initial = ethers.parseUnits("1000000", 18); // 1 000 000 * 1e18
     const token = await ShibaMeme.deploy(
-        1000000,               // 初始总量 1,000,000 SHIBME
+        initial,               // 初始总量 1,000,000 SHIBME
         deployer.address       // 营销钱包先用部署者
     );
     await token.deployed();
